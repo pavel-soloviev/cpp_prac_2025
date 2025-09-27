@@ -1,0 +1,5 @@
+-O2
+-Wall
+-Wextra
+-std=c++23
+-lm
