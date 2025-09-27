@@ -5,12 +5,12 @@
 #include <cstdlib>
 #include <algorithm>
 #include <random>
-#include <memory>
+// #include <memory>
 #include <vector>
 #include <map>
-#include <set>
+// #include <set>
 #include <coroutine>
-#include <future>
+// #include <future>
 #include <string>
 #include <ranges>
 
@@ -256,7 +256,7 @@ public:
     }
     virtual void act_player(std::vector<size_t>& alive_ids,
                             NightActions& night_actions,
-                            std::vector<Shared_pointer<Player>>) override {
+                            std::vector<SmartPtr<Player>>) override {
         std::cout << "Who do you want to heal?" << std::endl
                   << "Choose one of:" << std::endl;
         for (auto i : alive_ids) {
@@ -290,7 +290,7 @@ public:
 
     virtual void act_ai(std::vector<size_t>& alive_ids,
                         NightActions& night_actions,
-                        std::vector<Shared_pointer<Player>>) override {
+                        std::vector<SmartPtr<Player>>) override {
         simple_shuffle(alive_ids);
         for (size_t i = 0; i < alive_ids.size() - 1; i++) {
             for (size_t j = i + 1; j < alive_ids.size(); j++) {
@@ -303,7 +303,7 @@ public:
     }
     virtual void act_player(std::vector<size_t>& alive_ids,
                             NightActions& night_actions,
-                            std::vector<Shared_pointer<Player>> players) override {
+                            std::vector<SmartPtr<Player>> players) override {
         std::cout << "Choose two of:" << std::endl;
         for (auto i : alive_ids) {
             std::cout << i << " ";
@@ -341,7 +341,7 @@ public:
 
     virtual void act_ai(std::vector<size_t>& alive_ids,
                         NightActions& night_actions,
-                        std::vector<Shared_pointer<Player>>) override {
+                        std::vector<SmartPtr<Player>>) override {
         simple_shuffle(alive_ids);
         for (size_t i = 0; i < alive_ids.size(); i++) {
             night_actions.samurai_action = true;
@@ -350,7 +350,7 @@ public:
     }
     virtual void act_player(std::vector<size_t>& alive_ids,
                             NightActions& night_actions,
-                            std::vector<Shared_pointer<Player>>) override {
+                            std::vector<SmartPtr<Player>>) override {
         std::cout << "Who do you want to protect?" << std::endl
                   << "Choose one of:" << std::endl;
         for (auto i : alive_ids) {
@@ -388,7 +388,7 @@ public:
     }
     virtual void act_ai(std::vector<size_t>& alive_ids,
                         NightActions& night_actions,
-                        std::vector<Shared_pointer<Player>>) override {
+                        std::vector<SmartPtr<Player>>) override {
         if (is_boss) {
             simple_shuffle(alive_ids);
             size_t i = 0;
@@ -403,7 +403,7 @@ public:
     }
     virtual void act_player(std::vector<size_t>& alive_ids,
                             NightActions& night_actions,
-                            std::vector<Shared_pointer<Player>>) override {
+                            std::vector<SmartPtr<Player>>) override {
         std::cout << "Mafia:" << std::endl;
         for (auto i : known_mafia) {
             std::cout << i << " ";
@@ -458,7 +458,7 @@ public:
     }
     virtual void act_ai(std::vector<size_t>& alive_ids,
                         NightActions& night_actions,
-                        std::vector<Shared_pointer<Player>>) override {
+                        std::vector<SmartPtr<Player>>) override {
         simple_shuffle(alive_ids);
         size_t i = 0;
         while (i < alive_ids.size()) {
@@ -471,7 +471,7 @@ public:
     }
     virtual void act_player(std::vector<size_t>& alive_ids,
                             NightActions& night_actions,
-                            std::vector<Shared_pointer<Player>>) override {
+                            std::vector<SmartPtr<Player>>) override {
         std::cout << "Choose one of:" << std::endl;
         for (auto i : alive_ids) {
             std::cout << i << " ";
@@ -560,38 +560,38 @@ public:
             if (role == "civilian") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is civilian").Str());
-                players.push_back(Shared_pointer<Player>(new Civilian{i}));
+                players.push_back(SmartPtr<Player>(new Civilian{i}));
             } else if (role == "mafia") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is mafia").Str());
                 mafia_buf.push_back(i);
-                players.push_back(Shared_pointer<Player>(new Mafia{i}));
+                players.push_back(SmartPtr<Player>(new Mafia{i}));
             } else if (role == "maniac") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is maniac").Str());
-                players.push_back(Shared_pointer<Player>(new Maniac{i}));
+                players.push_back(SmartPtr<Player>(new Maniac{i}));
             } else if (role == "bull") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is bull").Str());
-                players.push_back(Shared_pointer<Player>(new Bull{i}));
+                players.push_back(SmartPtr<Player>(new Bull{i}));
                 mafia_buf.push_back(i);
                 bull_id = i;
             } else if (role == "commissar") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is commissar").Str());
-                players.push_back(Shared_pointer<Player>(new Commissar{i}));
+                players.push_back(SmartPtr<Player>(new Commissar{i}));
             } else if (role == "doctor") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is doctor").Str());
-                players.push_back(Shared_pointer<Player>(new Doctor{i}));
+                players.push_back(SmartPtr<Player>(new Doctor{i}));
             } else if (role == "journalist") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is journalist").Str());
-                players.push_back(Shared_pointer<Player>(new Journalist{i}));
+                players.push_back(SmartPtr<Player>(new Journalist{i}));
             } else if (role == "samurai") {
                 logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(i).f(" is samurai").Str());
-                players.push_back(Shared_pointer<Player>(new Samurai{i}));
+                players.push_back(SmartPtr<Player>(new Samurai{i}));
                 samurai_id = i;
             }
             if (std::cmp_equal(choice, i)) {
@@ -617,7 +617,7 @@ public:
                      view::filter([](auto p) { return p->team == "mafia"; });
         if (!mafia.empty() &&
                 (mafia | view::filter([](auto p) { return p->is_boss; })).empty()) {
-            std::vector<Shared_pointer<Player>> mafia_vec{mafia.begin(), mafia.end()};
+            std::vector<SmartPtr<Player>> mafia_vec{mafia.begin(), mafia.end()};
             simple_shuffle(mafia_vec);
             mafia_vec[0]->is_boss = true;
         }
@@ -742,7 +742,7 @@ public:
         ////
 #else
         //// Not using futures
-        std::vector<Shared_pointer<Player>> sh_alives{alives.begin(), alives.end()};
+        std::vector<SmartPtr<Player>> sh_alives{alives.begin(), alives.end()};
         simple_shuffle(sh_alives);
         for (const auto& player : sh_alives) {
             size_t value = 0;
