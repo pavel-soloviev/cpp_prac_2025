@@ -135,16 +135,14 @@ public:
 
     virtual void vote_ai(std::vector<size_t>& alive_ids, size_t& value) override {
         simple_shuffle(alive_ids);
-        size_t i = 0;
-        while (i < alive_ids.size()) {
+        for (size_t i = 0; i < alive_ids.size(); ++i) {
             if (alive_ids[i] != id) {
                 value = alive_ids[i];
                 return;
             }
-            i++;
         }
-        value = 0;
-        return;
+        if (!alive_ids.empty()) value = alive_ids.front();
+        else value = id;
     }
     virtual void act_ai(std::vector<size_t>&, NightActions&, std::vector<SmartPtr<Player>>) override {
         return;
@@ -383,7 +381,7 @@ public:
             }
             i++;
         }
-        value = 0;
+        value = alive_ids.front();
         return;
     }
     virtual void act_ai(std::vector<size_t>& alive_ids,
@@ -453,7 +451,7 @@ public:
             }
             i++;
         }
-        value = 0;
+        value = alive_ids.front();
         return;
     }
     virtual void act_ai(std::vector<size_t>& alive_ids,
@@ -625,6 +623,9 @@ public:
 
     std::string game_status() {
         auto alives = players | view::filter([](auto p) { return p->alive; });
+        size_t alive_count = std::ranges::distance(alives);
+    
+        logger->log(Loglevel::INFO, TPrettyPrinter().f("Alive players: ").f(alive_count).Str());
         if (alives.empty()) {
             // Everyone die
             return "draw";
@@ -669,6 +670,19 @@ public:
         while (true) {
             logger = new Logger{"day_" + std::to_string(day_number) + ".log"};
             logger->log(Loglevel::INFO, "--- DAY " + std::to_string(day_number) + " ---");
+            /////////////////////////////////////////////////////////////
+            std::string alive_str = "Alive players: ";
+            for (auto& player : players) {
+                if (player->alive) {
+                    alive_str += std::to_string(player->id) + " (" + player->role + "), ";
+                }
+            }
+            if (alive_str.size() > 2) {
+                alive_str.pop_back();
+                alive_str.pop_back();
+            }
+            logger->log(Loglevel::INFO, alive_str);
+            //////////////////////////////////////////////////////////
             day_vote();
             reelection_mafia_boss();
             cur_status = game_status();
