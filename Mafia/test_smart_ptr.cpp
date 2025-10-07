@@ -79,15 +79,6 @@ int main() {
         SmartPtr<Dummy> c(new Dummy(20));
         assert(a == b);
         assert(a != c);
-        assert((a < c) || (a > c)); // сравнение по адресам
-        std::cout << "OK\n";
-    }
-
-    std::cout << "=== TEST 8: make_smart_ptr() ===\n";
-    {
-        auto p = make_smart_ptr<Dummy>(777);
-        assert(p->value == 777);
-        assert(p.use_count() == 1);
         std::cout << "OK\n";
     }
 

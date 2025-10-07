@@ -1,4 +1,3 @@
-// #pragma once
 #include <utility>
 
 template<typename T>
@@ -70,14 +69,4 @@ public:
     // Сравнение
     bool operator==(const SmartPtr& other) const { return ptr == other.ptr; }
     bool operator!=(const SmartPtr& other) const { return ptr != other.ptr; }
-    bool operator<(const SmartPtr& other) const { return ptr < other.ptr; }
-    bool operator>(const SmartPtr& other) const { return ptr > other.ptr; }
-    bool operator<=(const SmartPtr& other) const { return ptr <= other.ptr; }
-    bool operator>=(const SmartPtr& other) const { return ptr >= other.ptr; }
 };
-
-// Фабричная функция
-template<typename T, typename... Args>
-SmartPtr<T> make_smart_ptr(Args&&... args) {
-    return SmartPtr<T>(new T(std::forward<Args>(args)...));
-}
