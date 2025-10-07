@@ -12,12 +12,9 @@
 #include "smart_ptr.cpp"
 #include "logger.cpp"
 
-// Диалоги
-
 namespace view = std::ranges::views;
 
 // корутины
-// Based on https://habr.com/ru/articles/798935/
 struct promise;
 
 // (голосование, ночные действия)
@@ -688,14 +685,14 @@ public:
     // убивает случайного игрока
     virtual void act_ai(std::vector<size_t> &alive_ids,
                         NightActions &night_actions,
-                        std::vector<SmartPtr<Player>>) override
+                        std::vector<SmartPtr<Player>> players) override
     {
         simple_shuffle(alive_ids);
         size_t i = 0;
         while (i < alive_ids.size())
         {
-            if (alive_ids[i] != id)
-            { // Не может убить себя
+            if (alive_ids[i] != id && players[alive_ids[i]] -> role != "bull")
+            { // Не может убить себя и быка
                 std::cout << "Маньяк выбрал свою цель!" << std::endl;
                 night_actions.killers[alive_ids[i]].push_back(id);
                 return;
@@ -707,12 +704,13 @@ public:
     // версия для реального игрока-маньяка
     virtual void act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
-                            std::vector<SmartPtr<Player>>) override
+                            std::vector<SmartPtr<Player>> players) override
     {
-        std::cout << "You are a deranged serial killer, there are no laws or boundaries for you, who will we kill tonight?" << std::endl;
+        std::cout << "Ты маньяк, кого ты выберешь своей жертвой этой ночью?" << std::endl;
         for (auto i : alive_ids)
         {
-            std::cout << i << " ";
+            if (players[i] -> role != "bull")
+                std::cout << i << " ";
         }
         std::cout << std::endl;
         size_t choice;
@@ -1294,7 +1292,6 @@ int main(void)
     auto game = Game<Player>(1); 
 
 
-    // НУЖНО ОБРАБАТЫВАТЬ ОТКРЫТИЕ ФАЙЛА В ФУНКЦИИ ОТДЕЛЬНО, А НЕ ПЕРЕДВАТЬ УКАЗАТЕЛИ НА ФАЙЛ И ТП
 
     if (check == "g")
     {
