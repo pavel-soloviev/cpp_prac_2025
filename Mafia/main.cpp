@@ -2,12 +2,9 @@
 #include <cstdlib>
 #include <algorithm>
 #include <random>
-#include <memory>
 #include <vector>
 #include <map>
-#include <set>
 #include <coroutine>
-#include <future>
 #include <string>
 #include <ranges>
 
@@ -519,7 +516,7 @@ public:
             {
                 if (std::find(known_mafia.begin(), known_mafia.end(), alive_ids[i]) == known_mafia.end())
                 {
-                    std::cout << "Мафия выбрала игрока " << alive_ids[i] << " своей целью!" << std::endl;
+                    std::cout << "Мафия выбрала свою цель!" << std::endl;
                     night_actions.killers[alive_ids[i]].push_back(id);
                     return;
                 }
@@ -569,7 +566,7 @@ class CommissarFan : public Civilian
 public:
     CommissarFan(size_t id_p) : Civilian(id_p)
     {
-        role = "commissar_fan";
+        role = "commisarfan";
         found_commissar = false;
         checked.push_back(id); // не проверяет саму себя
     }
@@ -591,8 +588,7 @@ public:
                 checked.push_back(i);
                 if (players[i]->role == "commissar")
                 {
-                    std::cout << "Поклонница комиссара нашла своего кумира! (игрок "
-                              << i << ")" << std::endl;
+                    std::cout << "Поклонница комиссара нашла своего кумира!" << std::endl;
                     found_commissar = true;
                 }
                 else
@@ -700,7 +696,7 @@ public:
         {
             if (alive_ids[i] != id)
             { // Не может убить себя
-                std::cout << "Маньяк убил игрока " << alive_ids[i] << "!" << std::endl;
+                std::cout << "Маньяк выбрал свою цель!" << std::endl;
                 night_actions.killers[alive_ids[i]].push_back(id);
                 return;
             }
@@ -796,10 +792,10 @@ public:
     unsigned int mafia_modifier;                   // Модификатор для расчета количества мафии
 
     // Доступные роли
-    std::vector<std::string> civilian_roles{"commissar", "doctor", "journalist", "commissar_fan"};
+    std::vector<std::string> civilian_roles{"commissar", "doctor", "journalist", "commisarfan"};
     std::vector<std::string> mafia_roles{"bull"};
 
-    size_t commisarfan_id = std::numeric_limits<size_t>::max();
+    // size_t commisarfan_id = std::numeric_limits<size_t>::max();
     size_t bull_id = std::numeric_limits<size_t>::max();
 
     explicit Game(unsigned int players_num_, unsigned int mafia_modifier_ = 3) : players_num(players_num_),
@@ -936,9 +932,9 @@ public:
             else if (role == "commisarfan")
             {
                 logger->log(Loglevel::INFO,
-                            TPrettyPrinter().f("Player ").f(i).f(" is commissar_fan").Str());
+                            TPrettyPrinter().f("Player ").f(i).f(" is commisarfan").Str());
                 players.push_back(SmartPtr<Player>(new CommissarFan{i}));
-                commisarfan_id = i;
+                // commisarfan_id = i;
             }
 
            ++i;
@@ -1180,7 +1176,7 @@ public:
             logger->log(Loglevel::INFO,
                         TPrettyPrinter().f("Player ").f(player->id).f(" voted for player ").f(value).Str());
             // std::cout << std::endl;
-            std::cout << TPrettyPrinter().f("Player ").f(player->id).f(" voted for player ").f(value).Str() << std::endl;
+            std::cout << TPrettyPrinter().f("Игрок ").f(player->id).f(" голосует за игрока ").f(value).Str() << std::endl;
         }
 
         auto key_val = std::max_element(votes.begin(), votes.end(),
