@@ -584,7 +584,7 @@ public:
             return; // если уже нашла комиссара — больше не действует
 
         simple_shuffle(alive_ids);
-        for (auto i : alive_ids)
+        for (const auto &i : alive_ids)
         {
             if (std::find(checked.begin(), checked.end(), i) == checked.end() && i != id)
             {
@@ -620,7 +620,7 @@ public:
         }
 
         std::cout << "Вы — поклонница комиссара! Выберите игрока, чтобы проверить, не он ли комиссар:" << std::endl;
-        for (auto i : alive_ids)
+        for (const auto &i : alive_ids)
         {
             std::cout << i << " ";
         }
@@ -879,6 +879,10 @@ public:
         std::vector<size_t> mafia_buf{}; //  буфер для ID мафиози
 
         size_t i = 0;
+
+        // for (auto role: roles) {
+        //     std::cout << role;
+        // }
         // Создание по распределениею
         for (const auto &role : roles)
         {
@@ -929,7 +933,7 @@ public:
                             TPrettyPrinter().f("Player ").f(i).f(" is journalist").Str());
                 players.push_back(SmartPtr<Player>(new Journalist{i}));
             }
-            else if (role == "commissar_fan")
+            else if (role == "commisarfan")
             {
                 logger->log(Loglevel::INFO,
                             TPrettyPrinter().f("Player ").f(i).f(" is commissar_fan").Str());
