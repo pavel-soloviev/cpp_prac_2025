@@ -46,7 +46,7 @@ public:
     T* get() const { return ptr; }
 
     // Методы
-    void reset(T* p = nullptr) {
+    void reset(T* p = nullptr) { //начинаем владеть НОВЫМ объектом или nullptr
         release();
         if (p) {
             ptr = p;

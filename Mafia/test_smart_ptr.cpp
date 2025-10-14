@@ -15,7 +15,7 @@ int main() {
         assert(p1.use_count() == 1);
         assert(p1->value == 42);
         std::cout << "OK\n";
-    } // p1 выходит из области видимости — объект должен быть уничтожен
+    }
 
     std::cout << "=== TEST 2: Copy semantics ===\n";
     {
@@ -25,7 +25,7 @@ int main() {
         assert(p2.use_count() == 2);
         assert(p1.get() == p2.get());
         std::cout << "OK\n";
-    } // оба выходят из области видимости — объект уничтожается
+    }
 
     std::cout << "=== TEST 3: Assignment operator ===\n";
     {
@@ -36,7 +36,7 @@ int main() {
         assert(p2.use_count() == 2);
         assert(p1.get() == p2.get());
         std::cout << "OK\n";
-    } // объект 1 уничтожен при перезаписи p2, потом и общий объект — в конце
+    }
 
     std::cout << "=== TEST 4: reset() ===\n";
     {
