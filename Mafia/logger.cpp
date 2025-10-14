@@ -26,13 +26,6 @@ public:
     // Logs a message with a given log level
     void log(Loglevel level, const std::string& message)
     {
-        // Get current timestamp
-        // time_t now = time(0);
-        // tm* timeinfo = localtime(&now);
-        // char timestamp[20];
-        // strftime(timestamp, sizeof(timestamp),
-        //          "%Y-%m-%d %H:%M:%S", timeinfo);
-
         // Create log entry
         std::ostringstream logEntry;
         // logEntry << "[" << timestamp << "] "
@@ -74,12 +67,3 @@ private:
         }
     }
 };
-
-// int main() {
-//     Logger logger("logfile.txt"); // Create logger instance
-//     // Example usage of the logger
-//     logger.log(Loglevel::INFO, "Program started.");
-//     logger.log(Loglevel::DEBUG, "Debugging information.");
-//     logger.log(Loglevel::ERROR, "An error occurred.");
-//     return 0;
-// }
