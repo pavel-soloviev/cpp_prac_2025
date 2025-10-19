@@ -2,11 +2,13 @@
 #include <cstdlib>
 #include <algorithm>
 #include <random>
+#include <thread>
 #include <vector>
 #include <map>
 #include <coroutine>
 #include <string>
 #include <ranges>
+#include <chrono>
 
 #include "formatter.cpp"
 #include "smart_ptr.cpp"
@@ -15,30 +17,89 @@
 namespace view = std::ranges::views;
 
 // корутины
-struct promise;
+// struct promise;
 
-// (голосование, ночные действия)
-struct Task : std::coroutine_handle<promise>
-{
-    using promise_type = ::promise;
+// // (голосование, ночные действия)
+// struct Task : std::coroutine_handle<promise>
+// {
+//     using promise_type = ::promise;
+//     std::coroutine_handle<promise_type> handle;
+// };
+
+// // Promise-объект для управления корутиной
+// struct promise
+// {
+//     // Создает объект корутины
+//     Task get_return_object() { return Task{}; }
+
+//     // Не приостанавливаем при старте - начинаем выполнение сразу
+//     std::suspend_never initial_suspend() noexcept { return {}; }
+
+//     // Не приостанавливаем при завершении - уничтожаем сразу
+//     std::suspend_never final_suspend() noexcept { return {}; }
+
+//     void return_void() {}
+
+//     void unhandled_exception() {}
+// };
+
+struct Task {
+    struct promise_type {
+        size_t result;
+        
+        Task get_return_object() {
+            return Task{ std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
+        std::suspend_always initial_suspend() noexcept { return {}; }
+        std::suspend_always final_suspend() noexcept { return {}; }
+        void return_value(size_t value) {
+            result = value;
+        }
+        void unhandled_exception() { std::terminate(); }
+    };
+
     std::coroutine_handle<promise_type> handle;
-};
 
-// Promise-объект для управления корутиной
-struct promise
-{
-    // Создает объект корутины
-    Task get_return_object() { return Task{}; }
+    Task(std::coroutine_handle<promise_type> h) : handle(h) {}
+    Task(const Task&) = delete;
+    Task& operator=(const Task&) = delete;
+    Task(Task&& other) noexcept : handle(other.handle) { other.handle = nullptr; }
+    Task& operator=(Task&& other) noexcept {
+        if (this != &other) {
+            if (handle) handle.destroy();
+            handle = other.handle;
+            other.handle = nullptr;
+        }
+        return *this;
+    }
+    ~Task() { if (handle) handle.destroy(); }
 
-    // Не приостанавливаем при старте - начинаем выполнение сразу
-    std::suspend_never initial_suspend() noexcept { return {}; }
+    void resume() {
+        if (handle && !handle.done())
+            handle.resume();
+    }
 
-    // Не приостанавливаем при завершении - уничтожаем сразу
-    std::suspend_never final_suspend() noexcept { return {}; }
+    bool done() const {
+        return !handle || handle.done();
+    }
+    
+    size_t get_result() const {
+        return handle.promise().result;
+    }
 
-    void return_void() {}
+    // Добавляем поддержку co_await для Task
+    bool await_ready() const noexcept {
+        return done(); // Если корутина завершена, готовы сразу
+    }
 
-    void unhandled_exception() {}
+    void await_suspend(std::coroutine_handle<> awaiting_coro) noexcept {
+        // В простейшем случае просто резюмим нашу корутину
+        resume();
+    }
+
+    size_t await_resume() const noexcept {
+        return get_result(); // Возвращаем результат когда корутина завершена
+    }
 };
 
 // Перемешаем
@@ -107,18 +168,19 @@ public:
     virtual ~Player() {};
 
     // голосование (возвращает корутину)
-    virtual Task vote(std::vector<size_t> alive_ids, size_t &value)
+    virtual Task vote(std::vector<size_t> alive_ids)
     {
         if (is_real_player)
         {
-            // Для реального игрока
-            vote_player(alive_ids, value);
-            co_return;
+            // Для реального игрока просто вызываем его метод
+            co_return co_await vote_player(alive_ids);
         }
         else
         {
-            vote_ai(alive_ids, value);
-            co_return;
+            // Для ИИ вызываем синхронный метод и возвращаем результат
+            size_t result;
+            vote_ai(alive_ids, result);
+            co_return result;
         }
     }
 
@@ -129,40 +191,41 @@ public:
     {
         if (is_real_player)
         {
-            act_player(alive_ids, night_actions, players);
-            co_return;
+            // Для реального игрока просто вызываем его метод
+            co_await act_player(alive_ids, night_actions, players);
+            co_return 0;
         }
         else
         {
+            // Для ИИ вызываем синхронный метод
             act_ai(alive_ids, night_actions, players);
-            co_return;
+            co_return 0;
         }
     }
 
     virtual void vote_ai(std::vector<size_t> &alive_ids, size_t &value) = 0;
 
     // Человек голосует
-    virtual void vote_player(std::vector<size_t> &alive_ids, size_t &value)
+    virtual Task vote_player(std::vector<size_t> &alive_ids)
     {
         std::cout << "Пришло время дневного голосования. За кого вы голосуете?" << std::endl;
 
-        // Пока ещё живые, за которых можно голосовать
         for (auto i : alive_ids)
         {
             std::cout << i << " ";
         }
         std::cout << std::endl;
+        
         size_t res;
         std::cin >> res;
-        value = res;
-        return;
+        co_return res;
     }
 
     virtual void act_ai(std::vector<size_t> &alive_ids,
                         NightActions &night_actions,
                         std::vector<SmartPtr<Player>> players) = 0;
 
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>> players) = 0;
 
@@ -189,8 +252,6 @@ public:
     {
         simple_shuffle(alive_ids);
         size_t i = 0;
-
-        // Ищем первого живого игрока, который не является собой
         while (i < alive_ids.size())
         {
             if (alive_ids[i] != id)
@@ -204,15 +265,16 @@ public:
         return;
     }
 
-    // Мирный ночью спит и ничего не делает
+    // Мирный ночью спит
     virtual void act_ai(std::vector<size_t> &, NightActions &, std::vector<SmartPtr<Player>>) override
     {
         return;
     }
 
-    virtual void act_player(std::vector<size_t> &, NightActions &, std::vector<SmartPtr<Player>>) override
+    virtual Task act_player(std::vector<size_t> &, NightActions &, std::vector<SmartPtr<Player>>) override
     {
-        return;
+        std::cout << "Вы мирный житель. Ночью вы спите." << std::endl;
+        co_return 0;
     }
 };
 
@@ -290,7 +352,7 @@ public:
         return;
     }
 
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>> players) override
     {
@@ -310,20 +372,16 @@ public:
 
             if (choice == "shoot" || choice == "s")
             {
-
-                // Выстрел в выбранного игрока
                 night_actions.killers[shoot_check].push_back(id);
-                return;
+                co_return 0;
             }
             else if (choice == "check" || choice == "c")
             {
-
-                // Проверка игрока
                 std::cout << "Игрок " << shoot_check
                           << ((players[shoot_check]->team == "mafia") ? "мафия" : "не мафия") << std::endl;
                 night_actions.commissar_action = true;
                 night_actions.commissar_choice = shoot_check;
-                return;
+                co_return 0;
             }
             else
             {
@@ -362,7 +420,7 @@ public:
         }
     }
 
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>>) override
     {
@@ -373,7 +431,6 @@ public:
             std::cout << i << " ";
         }
         std::cout << std::endl;
-        // std::cout << "No no no. It is not working this way. U have already healed this person last night!" << std::endl;
 
         while (true)
         {
@@ -389,7 +446,7 @@ public:
                 night_actions.doctors_action = true;
                 night_actions.doctors_choice = choice;
                 last_heal = choice;
-                return;
+                co_return 0;
             }
         }
     }
@@ -424,7 +481,7 @@ public:
         }
     }
 
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>> players) override
     {
@@ -457,7 +514,7 @@ public:
                 }
                 night_actions.journalist_action = true;
                 night_actions.journalist_choice = {first, second};
-                return;
+                co_return 0;
             }
             else
             {
@@ -522,11 +579,10 @@ public:
         }
     }
 
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>>) override
     {
-
         std::cout << "Клан мафии состоит из:" << std::endl;
         for (auto i : known_mafia)
         {
@@ -536,7 +592,6 @@ public:
 
         if (is_boss)
         {
-            // Босс выбирает жертву
             std::cout << "Вы Босс мафии. Вы решаете кого убить этой ночью" << std::endl
                       << "Выберите одного игрока из списка:" << std::endl;
             for (auto i : alive_ids)
@@ -550,9 +605,9 @@ public:
         }
         else
         {
-            // Обычный мафиозо не принимает решений
             std::cout << "Доверься Боссу. Он сделает верный выбор!" << std::endl;
         }
+        co_return 0;
     }
 };
 
@@ -602,14 +657,14 @@ public:
 
     }
 
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>> players) override
     {
         if (found_commissar)
         {
             std::cout << "Вы уже нашли комиссара. Спите спокойно этой ночью." << std::endl;
-            return;
+            co_return 0;
         }
 
         std::cout << "Вы — поклонница комиссара! Выберите игрока, чтобы проверить, не он ли комиссар:" << std::endl;
@@ -625,7 +680,7 @@ public:
         if (choice == id)
         {
             std::cout << "Вы не можете проверять себя!" << std::endl;
-            return;
+            co_return 0;
         }
 
         checked.push_back(choice);
@@ -702,7 +757,7 @@ public:
     }
 
     // версия для реального игрока-маньяка
-    virtual void act_player(std::vector<size_t> &alive_ids,
+    virtual Task act_player(std::vector<size_t> &alive_ids,
                             NightActions &night_actions,
                             std::vector<SmartPtr<Player>> players) override
     {
@@ -716,6 +771,7 @@ public:
         size_t choice;
         std::cin >> choice;
         night_actions.killers[choice].push_back(id);
+        co_return 0;
     }
 };
 
@@ -728,7 +784,7 @@ concept PlayerConcept = requires(T player,
     // Проверяю, что у ведущего классы, для которых определены методы vote и act в объектах
 
     // тип T имеет  vote
-    { player.vote(ids, value) } -> std::same_as<Task>;
+    { player.vote(ids) } -> std::same_as<Task>;
     // тип T имеет  act
     { player.act(ids, night_actions, players) } -> std::same_as<Task>;
 };
@@ -1147,34 +1203,64 @@ public:
 
     void day_vote()
     {
-        // находим живые айдишники
-        auto alives = players | view::filter([](auto p)
-                                             { return p->alive; });
-        auto alives_ids_rng = alives | view::transform([](auto p)
-                                                       { return p->id; });
+        auto alives = players | view::filter([](auto p) { return p->alive; });
+        auto alives_ids_rng = alives | view::transform([](auto p) { return p->id; });
         std::vector<size_t> alives_ids{alives_ids_rng.begin(), alives_ids_rng.end()};
 
-        // карта голосов
-        // id игрока - кол-во голосов за него
         std::map<size_t, unsigned int> votes{};
         for (auto id : alives_ids)
         {
-            votes[id] = 0; // Инициализируем нулями
+            votes[id] = 0;
         }
 
-        std::vector<SmartPtr<Player>> sh_alives{alives.begin(), alives.end()};
-        simple_shuffle(sh_alives);
-
-        // Каждыйы голосует
-        for (const auto &player : sh_alives)
+        // Вектор для хранения задач голосования
+        std::vector<std::pair<SmartPtr<Player>, Task>> voting_tasks;
+        
+        // Запускаем все корутины голосования
+        for (const auto &player : players)
         {
-            size_t value = 0;
-            player->vote(alives_ids, value);
-            votes[value]++;
+            if (player->alive)
+            {
+                auto task = player->vote(alives_ids);
+                voting_tasks.emplace_back(player, std::move(task));
+            }
+        }
+
+        // Обрабатываем корутины пока все не завершатся
+        bool all_done = false;
+        bool real_player_message_shown = false; // Флаг для отслеживания показа сообщения
+        
+        while (!all_done)
+        {
+            all_done = true;
+            
+            for (auto& [player, task] : voting_tasks)
+            {
+                if (!task.done())
+                {
+                    if (player->is_real_player && !real_player_message_shown)
+                    {
+                        // Показываем сообщение только один раз за цикл
+                        std::cout << ">>> Ожидаем голос реального игрока " << player->id << "..." << std::endl;
+                        real_player_message_shown = true;
+                    }
+                    
+                    task.resume();
+                    all_done = false;
+                }
+            }
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+
+        // Собираем результаты
+        for (auto& [player, task] : voting_tasks)
+        {
+            size_t vote_result = task.get_result();
+            votes[vote_result]++;
             logger->log(Loglevel::INFO,
-                        TPrettyPrinter().f("Player ").f(player->id).f(" voted for player ").f(value).Str());
-            // std::cout << std::endl;
-            std::cout << TPrettyPrinter().f("Игрок ").f(player->id).f(" голосует за игрока ").f(value).Str() << std::endl;
+                        TPrettyPrinter().f("Player ").f(player->id).f(" voted for player ").f(vote_result).Str());
+            std::cout << TPrettyPrinter().f("Игрок ").f(player->id).f(" голосует за игрока ").f(vote_result).Str() << std::endl;
         }
 
         auto key_val = std::max_element(votes.begin(), votes.end(),
@@ -1183,33 +1269,54 @@ public:
                                             return p1.second < p2.second;
                                         });
 
-        // убиваю игрока с max кол-во голосов
         players[key_val->first]->alive = false;
         logger->log(Loglevel::INFO,
                     TPrettyPrinter().f("Player ").f(key_val->first).f(" was hanged in the city square by peaceful means of democracy and voting.").Str());
-        // std::cout << std::endl;
         std::cout << TPrettyPrinter().f("Игрок ").f(key_val->first).f(" убит. За него проголосовало наибольшее число граждан.").Str() << std::endl
-                  << std::endl;
+                << std::endl;
     }
 
     void night_act()
     {
-        // находим живые айдишники
-        auto alives = players | view::filter([](auto p)
-                                             { return p->alive; });
-        auto alives_ids_rng = alives | view::transform([](auto p)
-                                                       { return p->id; });
+        auto alives = players | view::filter([](auto p) { return p->alive; });
+        auto alives_ids_rng = alives | view::transform([](auto p) { return p->id; });
         std::vector<size_t> alives_ids{alives_ids_rng.begin(), alives_ids_rng.end()};
 
-
-        // БД ночи очищается
         NightActions night_actions{players_num};
         night_actions.reset();
 
-        // каждый делает ночь
+        // Вектор для хранения задач ночных действий
+        std::vector<std::pair<SmartPtr<Player>, Task>> action_tasks;
+        
+        // Запускаем все корутины ночных действий
         for (const auto &player : alives)
         {
-            player->act(alives_ids, night_actions, players);
+            auto task = player->act(alives_ids, night_actions, players);
+            action_tasks.emplace_back(player, std::move(task));
+        }
+
+        // Обрабатываем корутины пока все не завершатся
+        bool real_player_message_shown = false;
+        bool all_done = false;
+        while (!all_done)
+        {
+            all_done = true;
+            
+            for (auto& [player, task] : action_tasks)
+            {
+                if (!task.done())
+                {
+                    if (player->is_real_player && !real_player_message_shown)
+                    {
+                        std::cout << ">>> Ожидаем ночное действие реального игрока " << player->id << "..." << std::endl;
+                        real_player_message_shown = true;
+                    }
+                    task.resume();
+                    all_done = false;
+                }
+            }
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
 
         // Бык -спец маф, которого не может завалить маньяк
@@ -1280,6 +1387,7 @@ int main(void)
     // int i = 7;
     // std::time_t result = std::time(nullptr);
     //  std::srand((int) result);
+
     std::srand(5);
     std::cout << "========== SRAND = " << 5 << " ==========" << std::endl;
 
