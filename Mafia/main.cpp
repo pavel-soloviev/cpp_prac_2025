@@ -9,39 +9,14 @@
 #include <string>
 #include <ranges>
 #include <chrono>
+#include <thread>
 
 #include "formatter.cpp"
 #include "smart_ptr.cpp"
 #include "logger.cpp"
 
+
 namespace view = std::ranges::views;
-
-// корутины
-// struct promise;
-
-// // (голосование, ночные действия)
-// struct Task : std::coroutine_handle<promise>
-// {
-//     using promise_type = ::promise;
-//     std::coroutine_handle<promise_type> handle;
-// };
-
-// // Promise-объект для управления корутиной
-// struct promise
-// {
-//     // Создает объект корутины
-//     Task get_return_object() { return Task{}; }
-
-//     // Не приостанавливаем при старте - начинаем выполнение сразу
-//     std::suspend_never initial_suspend() noexcept { return {}; }
-
-//     // Не приостанавливаем при завершении - уничтожаем сразу
-//     std::suspend_never final_suspend() noexcept { return {}; }
-
-//     void return_void() {}
-
-//     void unhandled_exception() {}
-// };
 
 struct Task {
     struct promise_type {
@@ -93,7 +68,6 @@ struct Task {
     }
 
     void await_suspend(std::coroutine_handle<> awaiting_coro) noexcept {
-        // В простейшем случае просто резюмим нашу корутину
         resume();
     }
 
@@ -695,6 +669,7 @@ public:
         }
         night_actions.commisarfan_action = true;
         night_actions.commisarfan_choice = choice;
+        co_return 0;
     }
 };
 
