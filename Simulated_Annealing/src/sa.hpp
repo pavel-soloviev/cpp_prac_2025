@@ -1,23 +1,32 @@
 #pragma once
-#include <memory>
 #include <vector>
+// #include <deque>
+#include <memory>
 #include <random>
+#include <string>
 
+// ---- Параметры ИО ----
 struct SAParams {
-    double T0{1.0}, Tmin{1e-3};
-    size_t itersPerT{100};
-    size_t patienceK{100}; // seq: 100 без улучшений (параллельный задаст своё)
-    uint64_t seed{42};
+    double T0{100.0};
+    double Tmin{1e-2};
+    size_t itersPerT{1};
+    size_t patienceK{100};
+    unsigned long long seed{42};
 };
 
+// Данные задачи
+struct Instance {
+    unsigned N{0}, M{0};
+    std::vector<unsigned> t; // длительности работ size=N
+};
+
+//Интерфейсы
 struct ISolution {
     virtual ~ISolution() = default;
-    virtual double objective() const = 0;              // Критерий (К2)
+    virtual double objective() const = 0;
     virtual std::unique_ptr<ISolution> clone() const = 0;
-    virtual void randomize(std::mt19937_64& rng) = 0;  // старт
-    // Для обмена между процессами (вариант 2): простая сериализация
-    virtual void serialize(std::vector<uint8_t>& out) const = 0;
-    virtual bool deserialize(const uint8_t* p, size_t n) = 0;
+    virtual void serialize(std::vector<unsigned char>& out) const = 0;
+    virtual bool deserialize(const unsigned char* p, size_t n) = 0;
 };
 
 struct IMutation {
@@ -25,24 +34,34 @@ struct IMutation {
     virtual void apply(ISolution& s, std::mt19937_64& rng) = 0;
 };
 
-struct ITempSchedule {
-    virtual ~ITempSchedule() = default;
+struct ITemp {
+    virtual ~ITemp() = default;
     virtual void reset(double T0) = 0;
-    virtual double current() const = 0;
+    virtual double value() const = 0;
     virtual void next() = 0;
 };
 
-class SimulatedAnnealing {
-public:
-    SimulatedAnnealing(std::unique_ptr<ISolution> init,
-                       std::unique_ptr<IMutation> mut,
-                       std::unique_ptr<ITempSchedule> temp,
-                       SAParams p);
-    std::unique_ptr<ISolution> run(); // возвращает лучшее найденное
-private:
-    std::unique_ptr<ISolution> cur_, best_;
-    std::unique_ptr<IMutation> mut_;
-    std::unique_ptr<ITempSchedule> temp_;
-    SAParams P_;
-    std::mt19937_64 rng_;
-};
+// API core.cpp
+bool load_instance_csv(const std::string& path, Instance& I);
+
+std::unique_ptr<ISolution> make_initial_solution(const Instance& I, unsigned long long seed);
+std::unique_ptr<IMutation> create_default_mutation(double pSwap=0.6, double pMove=0.4);
+std::unique_ptr<ITemp>     create_temp_by_name(const std::string& law);
+
+std::unique_ptr<ISolution> run_sequential(std::unique_ptr<ISolution> init,
+                                          std::unique_ptr<IMutation> mut,
+                                          std::unique_ptr<ITemp> temp,
+                                          SAParams P);
+
+void   pretty_print_solution(const ISolution& S, const Instance& I);
+double objective_of(const ISolution& S);
+
+// для параллельного обмена
+std::vector<unsigned char> solution_to_bytes(const ISolution& S);
+std::unique_ptr<ISolution> solution_from_bytes(const Instance& I,
+                                               const std::vector<unsigned char>& b);
+
+// API parallel.cpp
+std::unique_ptr<ISolution> run_parallel(const Instance& I, SAParams P,
+                                        unsigned nproc, unsigned outerPatience,
+                                        const std::string& law);
