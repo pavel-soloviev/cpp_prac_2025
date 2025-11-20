@@ -10,26 +10,21 @@
 
 namespace funcs {
 
-// ===== Базовый интерфейс функции =====
 
 class TFunction;
 using FunctionPtr = std::shared_ptr<TFunction>;
 
+// абстрактный класс для функций
 class TFunction {
 public:
     virtual ~TFunction() = default;
 
-    // Вычисление значения
     virtual double operator()(double x) const = 0;
 
-    // Производная в точке
     virtual double Derivative(double x) const = 0;
 
-    // Строковое представление (для базовых функций обязательно,
-    // для составных – опционально)
     virtual std::string ToString() const = 0;
 
-    // Полиморфное копирование
     virtual FunctionPtr Clone() const = 0;
 };
 
@@ -140,7 +135,7 @@ public:
 
     double operator()(double x) const override {
         double result = 0.0;
-        double power_of_x = 1.0;  // x^0
+        double power_of_x = 1.0;
 
         for (double c : coeffs_) {
             result += c * power_of_x;
@@ -151,17 +146,16 @@ public:
 
     double Derivative(double x) const override {
         double result = 0.0;
-        double power_of_x = 1.0;  // x^(i-1) при i=1
+        double power_of_x = 1.0;
 
         for (std::size_t i = 1; i < coeffs_.size(); ++i) {
             result += static_cast<double>(i) * coeffs_[i] * power_of_x;
-            power_of_x *= x;  // теперь это x^i
+            power_of_x *= x;
         }
         return result;
     }
 
     std::string ToString() const override {
-        // Строку делаем только для самого полинома (без упрощения выражений)
         bool first = true;
         std::ostringstream out;
         for (std::size_t i = 0; i < coeffs_.size(); ++i) {
@@ -193,7 +187,6 @@ private:
     std::vector<double> coeffs_;
 };
 
-// ===== Составные функции (арифметические выражения) =====
 
 enum class BinaryOp {
     Add,
@@ -224,7 +217,7 @@ public:
         case BinaryOp::Sub: return a - b;
         case BinaryOp::Mul: return a * b;
         case BinaryOp::Div:
-            // пусть деление на 0 обрабатывает сам double
+            // деление на 0 обрабатывает сам double
             return a / b;
         }
         throw std::logic_error("Unknown binary operation");
@@ -247,7 +240,6 @@ public:
     }
 
     std::string ToString() const override {
-        // Для отладки/красоты можно выводить выражение целиком
         char symbol = '?';
         switch (op_) {
         case BinaryOp::Add: symbol = '+'; break;
@@ -270,8 +262,7 @@ private:
     BinaryOp op_;
 };
 
-// ===== Вспомогательная функция для создания бинарных выражений =====
-
+// Вспомогательная функция для создания бинарных выражений
 inline FunctionPtr MakeBinary(FunctionPtr left, BinaryOp op, FunctionPtr right) {
     if (!left || !right) {
         throw std::logic_error("Null operand in arithmetic expression");

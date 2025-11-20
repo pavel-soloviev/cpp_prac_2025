@@ -73,7 +73,7 @@ TEST(FunctionFactoryTests, ThrowsOnUnknownTypes) {
     EXPECT_THROW(factory.Create("poly?", std::vector<double>{1.0, 2.0}), std::logic_error);
 }
 
-// ======================== 2. Базовые функции: значение, производная, строка ========================
+// 2. Базовые функции: значение, производная, строка
 
 TEST(BasicFunctionsTests, IdentityFunctionWorks) {
     IdentityFunction f;
@@ -121,7 +121,7 @@ TEST(BasicFunctionsTests, PolynomialFunctionWorks) {
     EXPECT_EQ(f.ToString(), "1 + 2*x^1 + 3*x^2");
 }
 
-// ======================== 3. Арифметические выражения (BinaryFunction + операторы) ========================
+// 3. Арифметические выражения (BinaryFunction + операторы)
 
 TEST(BinaryFunctionTests, MakeBinaryThrowsOnNullOperands) {
     FunctionPtr nonNull = std::make_shared<IdentityFunction>();
@@ -182,7 +182,7 @@ TEST(BinaryFunctionTests, ReferenceOperatorsProduceBinaryFunction) {
     EXPECT_NE(s.find("5"), std::string::npos);
 }
 
-// ======================== 4. Градиентный спуск: поиск корня ========================
+// 4. Градиентный спуск: поиск корня
 
 TEST(GradientDescentTests, ThrowsOnNullPointer) {
     FunctionPtr f;
