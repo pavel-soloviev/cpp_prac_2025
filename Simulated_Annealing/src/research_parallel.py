@@ -7,7 +7,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-# ----------------- НАСТРОЙКИ -----------------
 
 BINARY = "./sa_sched"      # путь к бинарнику
 LAW = "logoverlinear"               # Больцман
@@ -17,13 +16,13 @@ DUR_MIN = 3
 DUR_MAX = 20
 
 NPROCS_LIST = [2, 4, 6, 8, 10, 12, 14, 16]
-REPEATS = 3
+REPEATS = 1
 SEED_BASE = 42
 
 TMP_CSV = Path("par_input_M80_N32000.csv")
 
 
-# ----------------- ГЕНЕРАЦИЯ ВХОДНЫХ ДАННЫХ -----------------
+# ГЕНЕРАЦИЯ ВХОДНЫХ ДАННЫХ
 
 def write_instance_csv(path: Path, M: int, N: int, dur_lo: int, dur_hi: int, seed: int):
     """Генерирует один CSV-файл с фиксированным seed."""
@@ -34,7 +33,7 @@ def write_instance_csv(path: Path, M: int, N: int, dur_lo: int, dur_hi: int, see
         f.write(",".join(str(x) for x in durations) + ",\n")
 
 
-# ----------------- ЗАПУСК ПАРАЛЛЕЛЬНОГО ИО -----------------
+# ЗАПУСК ПАРАЛЛЕЛЬНОГО ИО
 
 def run_sa_parallel(nproc: int, seed: int) -> tuple[float, float | None]:
     """
@@ -59,14 +58,14 @@ def run_sa_parallel(nproc: int, seed: int) -> tuple[float, float | None]:
 
     out = proc.stdout + "\n" + proc.stderr
 
-    # Парсим Best K2: ... (с поддержкой экспоненциального формата)
+    # Парсим Best K2
     m = re.search(r"Best K2:\s*([0-9]+(?:\.[0-9]+)?(?:e[+\-]?\d+)?)", out, re.IGNORECASE)
     k2 = float(m.group(1)) if m else None
 
     return wall, k2
 
 
-# ----------------- ПОСТРОЕНИЕ ГРАФИКОВ -----------------
+# ПОСТРОЕНИЕ ГРАФИКОВ
 
 def plot_lines(x, y, title, xlabel, ylabel, filename):
     plt.figure(figsize=(8, 5))
@@ -80,8 +79,6 @@ def plot_lines(x, y, title, xlabel, ylabel, filename):
     print(f"Saved plot: {filename}")
     plt.close()
 
-
-# ----------------- MAIN -----------------
 
 def main():
     # 1) Генерируем один общий CSV для всех запусков

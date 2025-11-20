@@ -18,6 +18,7 @@ struct ScheduleSolution final : ISolution {
     std::vector<std::deque<unsigned>> G;           // порядки на процессорах
     const Instance* inst;
 
+    // рандомно инициализируем расписание
     void randomize(unsigned long long seed) {
         std::vector<unsigned> jobs(inst->N);
         std::iota(jobs.begin(), jobs.end(), 0);
@@ -32,31 +33,40 @@ struct ScheduleSolution final : ISolution {
         }
         rebuildHFromOrders();
     }
+
     void rebuildHFromOrders() {
         std::fill(H.begin(), H.end(), 0);
         for (unsigned j=0;j<inst->M;++j)
             for (unsigned i: G[j]) H[i*inst->M + j] = 1;
     }
-    void rebuildOrdersFromH() {
-        for (auto& g: G) g.clear();
-        for (unsigned i=0;i<inst->N;++i)
-            for (unsigned j=0;j<inst->M;++j)
-                if (H[i*inst->M + j]) G[j].push_back(i);
-    }
+    // void rebuildOrdersFromH() {
+    //     for (auto& g: G) g.clear();
+    //     for (unsigned i=0;i<inst->N;++i)
+    //         for (unsigned j=0;j<inst->M;++j)
+    //             if (H[i*inst->M + j]) G[j].push_back(i);
+    // }
     double objective() const override {
         unsigned long long sum = 0;
         for (unsigned j=0;j<inst->M;++j) {
             unsigned long long acc = 0;
-            for (unsigned i: G[j]) { acc += inst->t[i]; sum += acc; }
+            for (unsigned i: G[j]) {
+                acc += inst->t[i];
+                sum += acc;
+            }
         }
         return static_cast<double>(sum);
     }
+    // делаем глубокую копию чтобы уметь мутировать копию и сравнивать с исходным решением
     std::unique_ptr<ISolution> clone() const override {
         auto p = std::make_unique<ScheduleSolution>(inst);
-        p->H = H; p->G = G;
+        p->H = H;
+        p->G = G;
         return p;
     }
+
+    // кодируем условие и расписание массивом байт для передачи по сокетам
     void serialize(std::vector<unsigned char>& out) const override {
+        // чтобы уметь дописывать байты в конец массива
         auto push = [&](const void* ptr, size_t n){
             auto b = static_cast<const unsigned char*>(ptr);
             out.insert(out.end(), b, b+n);
@@ -70,9 +80,15 @@ struct ScheduleSolution final : ISolution {
             for (unsigned i: G[j]) push(&i, sizeof(i));
         }
     }
+
     bool deserialize(const unsigned char* p, size_t n) override {
         size_t ofs=0;
-        auto take=[&](void* dst,size_t k){ if (ofs+k>n) return false; std::memcpy(dst,p+ofs,k); ofs+=k; return true; };
+        auto take=[&](void* dst,size_t k){
+            if (ofs+k>n) return false; 
+            std::memcpy(dst,p+ofs,k); 
+            ofs+=k; 
+            return true;
+        };
         unsigned M=0,N=0;
         if(!take(&M,sizeof(M)) || !take(&N,sizeof(N))) return false;
         if (M!=inst->M || N!=inst->N) return false;
@@ -91,7 +107,8 @@ struct ScheduleSolution final : ISolution {
 
 //Мутации 
 static unsigned urand(std::mt19937_64& r, unsigned hi) {
-    std::uniform_int_distribution<unsigned> U(0, hi); return U(r);
+    std::uniform_int_distribution<unsigned> U(0, hi);
+    return U(r);
 }
 struct MutSwapInProc final : IMutation {
     void apply(ISolution& s0, std::mt19937_64& rng) override {
@@ -126,8 +143,12 @@ struct MutateMixed final : IMutation {
     MutateMixed(double a, double b): pSwap(a), pMove(b) {}
     void apply(ISolution& s, std::mt19937_64& rng) override {
         std::uniform_real_distribution<double> U(0.0, 1.0);
-        if (U(rng) < pSwap) { MutSwapInProc().apply(s, rng); }
-        else               { MutMoveAcross().apply(s, rng); }
+        if (U(rng) < pSwap) {
+            MutSwapInProc().apply(s, rng);
+        }
+        else {
+            MutMoveAcross().apply(s, rng);
+        }
     }
 };
 
@@ -178,9 +199,14 @@ public:
                 }
                 if (accept) cur_.swap(cand);
                 double v = cur_->objective();
-                if (v < bestVal) { best_.reset(cur_->clone().release()); bestVal = v; noimp = 0; }
+                if (v < bestVal) {
+                    best_ = cur_->clone();
+                    bestVal = v;
+                    noimp = 0;
+                }
             }
-            temp_->next(); ++noimp;
+            temp_->next();
+            ++noimp;
         }
         return std::move(best_);
     }
@@ -193,17 +219,28 @@ private:
 };
 
 //Утилиты и API
+//загружает экземпляр задачи из CSV-файла в структуру Instance
 bool load_instance_csv(const std::string& path, Instance& I) {
     FILE* f = std::fopen(path.c_str(), "r");
     if (!f) return false;
     unsigned M,N;
-    if (std::fscanf(f, "%u,%u,\n", &M, &N) != 2) { std::fclose(f); return false; }
-    I.M = M; I.N = N; I.t.assign(N, 0);
+    if (std::fscanf(f, "%u,%u,\n", &M, &N) != 2) {
+        std::fclose(f);
+        return false;
+    }
+    I.M = M;
+    I.N = N;
+    I.t.assign(N, 0);
     for (unsigned i=0;i<N;++i) {
-        unsigned x=0; if (std::fscanf(f, "%u,", &x) != 1) { std::fclose(f); return false; }
+        unsigned x=0;
+        if (std::fscanf(f, "%u,", &x) != 1) { 
+            std::fclose(f);
+            return false;
+        }
         I.t[i] = x;
     }
-    std::fclose(f); return true;
+    std::fclose(f);
+    return true;
 }
 
 std::unique_ptr<ISolution> make_initial_solution(const Instance& I, unsigned long long seed) {
@@ -229,8 +266,12 @@ std::unique_ptr<ISolution> run_sequential(std::unique_ptr<ISolution> init,
 }
 void pretty_print_solution(const ISolution& S, const Instance& I) {
     auto tmp = std::make_unique<ScheduleSolution>(&I);
-    std::vector<unsigned char> buf; S.serialize(buf);
-    if (!tmp->deserialize(buf.data(), buf.size())) { std::cout << "(cannot pretty print)\n"; return; }
+    std::vector<unsigned char> buf;
+    S.serialize(buf);
+    if (!tmp->deserialize(buf.data(), buf.size())) {
+        std::cout << "(cannot pretty print)\n";
+        return;
+    }
     for (unsigned j=0;j<I.M;++j) {
         std::cout << "P" << j << ":";
         for (size_t k=0;k<tmp->G[j].size();++k) {
@@ -241,10 +282,14 @@ void pretty_print_solution(const ISolution& S, const Instance& I) {
         std::cout << "\n";
     }
 }
-double objective_of(const ISolution& S) { return S.objective(); }
+double objective_of(const ISolution& S) {
+    return S.objective();
+}
 
 std::vector<unsigned char> solution_to_bytes(const ISolution& S) {
-    std::vector<unsigned char> b; S.serialize(b); return b;
+    std::vector<unsigned char> b;
+    S.serialize(b);
+    return b;
 }
 std::unique_ptr<ISolution> solution_from_bytes(const Instance& I, const std::vector<unsigned char>& b) {
     auto p = std::make_unique<ScheduleSolution>(&I);

@@ -43,7 +43,8 @@ int main(int argc, char** argv) {
 
     Instance I{};
     if (!load_instance_csv(input, I)) {
-        std::cerr << "Failed to read instance: " << input << "\n"; return 2;
+        std::cerr << "Failed to read instance: " << input << "\n";
+        return 2;
     }
     SAParams P{T0, Tmin, iters, patience, seed};
 
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
     if (mode == "par") {
         auto best = run_parallel(I, P, nproc, outerK, law);
         std::cout << "Best K2: " << objective_of(*best) << "\n";
-        pretty_print_solution(*best, I);
+        // pretty_print_solution(*best, I);
         return 0;
     }
 

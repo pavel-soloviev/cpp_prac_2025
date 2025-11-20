@@ -12,10 +12,10 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 run-seq: $(TARGET)
-	./$(TARGET) --mode=seq --input sample.csv --T0 1000 --Tmin 1e-3 --iters 120 --patience 1000 --law logoverlinear --seed 42
+	./$(TARGET) --mode=seq --input sample.csv --T0 1000 --Tmin 1e-3 --iters 100 --patience 1000 --law logoverlinear --seed 42
 
 run-par: $(TARGET)
-	./$(TARGET) --mode=par --input sample.csv --nproc 4 --outer 10 --T0 1000 --Tmin 1e-3 --iters 120 --patience 1000 --law logoverlinear --seed 42
+	./$(TARGET) --mode=par --input sample.csv --nproc 4 --outer 10 --T0 100 --Tmin 1e-2 --iters 1 --patience 10000 --law logoverlinear --seed 42
 
 clean:
 	rm -f $(TARGET) $(OBJS) $(DEPS)

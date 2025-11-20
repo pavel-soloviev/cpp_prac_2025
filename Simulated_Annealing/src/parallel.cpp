@@ -9,8 +9,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <iostream>
 
 // помощники чтения/записи
+// гарантированно пишем в канал все байты до конца
 static bool write_all(int fd, const void* buf, size_t n) {
     const unsigned char* p = static_cast<const unsigned char*>(buf);
     size_t off = 0;
@@ -110,11 +112,25 @@ std::unique_ptr<ISolution> run_parallel(const Instance& I, SAParams P,
 
     for (unsigned i=0;i<nproc;++i) {
         int sd[2];
-        if (socketpair(AF_UNIX, SOCK_STREAM, 0, sd) != 0) { perror("socketpair"); break; }
+        if (socketpair(AF_UNIX, SOCK_STREAM, 0, sd) != 0) {
+            perror("socketpair");
+            break;
+        }
         pid_t pid = fork();
-        if (pid < 0) { perror("fork"); close(sd[0]); close(sd[1]); break; }
-        if (pid == 0) { close(sd[0]); worker_loop(sd[1], I, P, law, i+1); _exit(0); }
-        close(sd[1]); socks[i] = sd[0]; pids[i]  = pid;
+        if (pid < 0) {
+            perror("fork");
+            close(sd[0]);
+            close(sd[1]);
+            break;
+        }
+        if (pid == 0) {
+            close(sd[0]);
+            worker_loop(sd[1], I, P, law, i+1);
+            _exit(0);
+        }
+        close(sd[1]);
+        socks[i] = sd[0];
+        pids[i]  = pid;
     }
 
     // барьерные раунды
@@ -146,18 +162,38 @@ std::unique_ptr<ISolution> run_parallel(const Instance& I, SAParams P,
             auto cand = solution_from_bytes(I, buf);
             if (!cand) continue;
             double v = objective_of(*cand);
-            if (v < bestObj) { best = std::move(cand); bestObj = v; improved = true; }
+            if (v < bestObj) {
+                best = std::move(cand);
+                bestObj = v;
+                improved = true;
+            }
         }
-        if (improved) noimp = 0; else ++noimp;
+        if (improved) {
+            noimp = 0; 
+            std::cout << "New Best K2: " << objective_of(*best) << "\n";
+            // std::cout << "new best!!!" << std::endl;
+            // pretty_print_solution(*best, I);
+        } else {
+            std::cout << "no improve(((\n";
+            ++noimp;
+            // std::cout << "no improve(((" << std::endl;
+        }
     }
 
     // послать STOP
     for (unsigned i=0;i<nproc;++i) {
         if (socks[i] >= 0) {
-            uint32_t op = OP_STOP; write_all(socks[i], &op, sizeof(op)); close(socks[i]);
+            uint32_t op = OP_STOP;
+            write_all(socks[i], &op, sizeof(op));
+            close(socks[i]);
         }
     }
-    for (unsigned i=0;i<nproc;++i) if (pids[i] > 0) { int st=0; waitpid(pids[i], &st, 0); }
+    for (unsigned i=0;i<nproc;++i) {
+        if (pids[i] > 0) {
+            int st=0;
+            waitpid(pids[i], &st, 0);
+        }
+    }
 
     return best;
 }
