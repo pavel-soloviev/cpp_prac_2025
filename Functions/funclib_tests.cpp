@@ -218,7 +218,7 @@ TEST(GradientDescentTests, FindsNegativeRootForQuadraticFromReference) {
 
     FunctionPtr f_ptr = x2 - c4;   // x^2 - 4
     ASSERT_NE(f_ptr, nullptr);
-    TFunction& f = *f_ptr;         // безопасно: shared_ptr держит объект
+    TFunction& f = *f_ptr;
 
     double x0 = -10.0;         // старт слева
     double alpha = 0.01;
