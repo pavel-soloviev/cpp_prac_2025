@@ -34,7 +34,7 @@ int main() {
     // Пример градиентного спуска для f(x) = x^2 - 4
     auto f2 = factory.Create("power", 2.0);
     auto c4 = factory.Create("const", 4.0);
-    auto eq = f2 + c4;   // x^2 - 4
+    auto eq = f2 - c4;   // x^2 - 4
 
     double root = GradientDescentRoot(eq, 10.0, 0.0001, 10000);
     std::cout << "root ~ " << root << ", f(root) = " << (*eq)(root) << '\n';

@@ -7,7 +7,7 @@
 
 using namespace funcs;
 
-// ======================== 1. Фабрика: создание объектов и ошибки ========================
+// 1. Фабрика: создание объектов и ошибки
 
 TEST(FunctionFactoryTests, CreatesIdentityAndExp) {
     FunctionFactory factory;
@@ -132,6 +132,7 @@ TEST(BinaryFunctionTests, MakeBinaryThrowsOnNullOperands) {
     EXPECT_THROW(MakeBinary(nullPtr, BinaryOp::Mul, nullPtr), std::logic_error);
 }
 
+// перегрузка операторов + - * / для FunctionPtr
 TEST(BinaryFunctionTests, PointerOperatorsComputeCorrectly) {
     FunctionFactory factory;
 
@@ -168,6 +169,7 @@ TEST(BinaryFunctionTests, PointerOperatorsComputeCorrectly) {
     EXPECT_EQ(quot->ToString(), "(x / 2)");
 }
 
+//перегрузка операторов + - * / для ссылок
 TEST(BinaryFunctionTests, ReferenceOperatorsProduceBinaryFunction) {
     ConstantFunction c1(3.0); // 3
     ConstantFunction c2(5.0); // 5
@@ -182,8 +184,7 @@ TEST(BinaryFunctionTests, ReferenceOperatorsProduceBinaryFunction) {
     EXPECT_NE(s.find("5"), std::string::npos);
 }
 
-// 4. Градиентный спуск: поиск корня
-
+// 4. Градиентный спуск (поиск корня)
 TEST(GradientDescentTests, ThrowsOnNullPointer) {
     FunctionPtr f;
     EXPECT_THROW(GradientDescentRoot(f, 0.0, 0.1, 10), std::logic_error);
